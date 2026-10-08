@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>חדר בריחה דיגיטלי</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Heebo', sans-serif;
+            background-color: #ffffff;
+            overflow-x: hidden;
+        }
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(circle at 50% 50%, rgba(220, 38, 38, 0.03) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f8fafc;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 5px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col text-slate-900 bg-white relative">
+
+    <!-- Password Overlay -->
+    <div id="passwordOverlay" class="fixed inset-0 bg-slate-950 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full p-10 text-center border border-slate-100">
+            <div class="w-20 h-20 bg-red-50 text-red-600 rounded-3xl mx-auto flex items-center justify-center text-4xl mb-6 shadow-inner animate-pulse">
+                <i class="fa-solid fa-skull"></i>
+            </div>
+            <h2 class="text-3xl font-black text-slate-900 mb-3">גישה מאובטחת</h2>
+            <p class="text-sm text-slate-500 mb-8 font-medium">נא להזין קוד גישה כדי להיכנס למערכת הקבצים</p>
+            <form onsubmit="checkPassword(event)" class="space-y-5">
+                <input type="text" id="passwordInput" placeholder="הכנס קוד סיסמה..." class="w-full px-5 py-4 rounded-2xl border-2 border-slate-200 focus:outline-none focus:border-red-600 text-center font-mono tracking-widest text-2xl uppercase" autofocus required>
+                <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-4 rounded-2xl transition shadow-xl text-lg">
+                    כניסה למערכת
+                </button>
+            </form>
+            <p id="passwordError" class="text-sm text-red-500 font-bold mt-4 hidden">סיסמה שגויה, נסה שוב.</p>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-6 md:p-12 flex flex-col justify-center items-center z-10 min-h-screen" id="mainContainer">
+        <!-- Dynamic content injected via renderView() -->
+    </main>
+
+    <!-- Content Modal -->
+    <div id="modalOverlay" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 md:p-6 opacity-0 pointer-events-none transition-opacity duration-300">
+        <div id="modalContainer" class="bg-white rounded-3xl shadow-2xl max-w-6xl w-full h-[95vh] overflow-hidden flex flex-col transform scale-95 transition-transform duration-300 border border-slate-100">
+            
+            <div class="bg-slate-50 px-8 py-5 border-b border-slate-200 flex items-center justify-between shrink-0">
+                <div class="flex items-center gap-4">
+                    <div id="modalIconBg" class="w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center text-xl font-bold shadow-inner">
+                        <i id="modalHeaderIcon" class="fa-solid fa-file"></i>
+                    </div>
+                    <div>
+                        <h3 id="modalTitle" class="font-black text-slate-900 text-xl md:text-2xl">כותרת הקובץ</h3>
+                        <p id="modalSubtitle" class="text-sm text-slate-500 font-medium">מסמך Google Docs משולב</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button onclick="closeModal()" class="w-11 h-11 rounded-full bg-slate-200/70 hover:bg-slate-300 text-slate-700 flex items-center justify-center transition cursor-pointer text-xl">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div id="modalBody" class="flex-1 bg-slate-100 flex flex-col overflow-hidden relative">
+                <!-- Dynamic Content -->
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Alert Popup for TV Mode Locked Items -->
+    <div id="alertOverlay" class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-300">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-8 text-center border border-slate-100 transform scale-95 transition-transform duration-300" id="alertBox">
+            <div class="w-16 h-16 bg-red-50 text-red-600 rounded-2xl mx-auto flex items-center justify-center text-3xl mb-5 shadow-inner">
+                <i class="fa-solid fa-lock"></i>
+            </div>
+            <h3 class="text-2xl font-black text-slate-900 mb-2">קובץ נעול</h3>
+            <p id="alertMessage" class="text-slate-600 mb-6 font-medium">לא ניתן לגשת לקובץ זה במצב טלוויזיה כרגע.</p>
+            <button onclick="closeAlert()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3.5 rounded-2xl transition shadow-lg text-base">
+                הבנתי
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        let currentMode = 'computer';
+        if (urlParams.has('tv') || urlParams.get('mode') === 'tv') {
+            currentMode = 'tv';
+        }
+
+        function checkPassword(e) {
+            e.preventDefault();
+            const pwd = document.getElementById('passwordInput').value.trim().toUpperCase();
+            const err = document.getElementById('passwordError');
+            if (pwd === "BOB") {
+                const overlay = document.getElementById('passwordOverlay');
+                overlay.classList.add('opacity-0', 'pointer-events-none');
+                setTimeout(() => { overlay.style.display = 'none'; }, 300);
+            } else {
+                err.classList.remove('hidden');
+            }
+        }
+
+        function showAlert(msg) {
+            document.getElementById('alertMessage').innerText = msg;
+            const overlay = document.getElementById('alertOverlay');
+            const box = document.getElementById('alertBox');
+            overlay.classList.remove('opacity-0', 'pointer-events-none');
+            box.classList.remove('scale-95');
+            box.classList.add('scale-100');
+        }
+
+        function closeAlert() {
+            const overlay = document.getElementById('alertOverlay');
+            const box = document.getElementById('alertBox');
+            overlay.classList.add('opacity-0', 'pointer-events-none');
+            box.classList.remove('scale-100');
+            box.classList.add('scale-95');
+        }
+
+        let currentFolder = null;
+
+        const folderContents = {
+            1: {
+                name: "קובץ 1",
+                icon: "fa-folder",
+                color: "text-amber-500",
+                items: [
+                    {
+                        id: "f1_video",
+                        name: "???",
+                        type: "video",
+                        icon: "fa-video",
+                        color: "text-red-600",
+                        bg: "bg-red-50"
+                    }
+                ]
+            },
+            2: {
+                name: "קובץ 2",
+                icon: "fa-folder",
+                color: "text-amber-500",
+                items: [
+                    {
+                        id: "f2_doc",
+                        name: "מבחן פתע במתמטיקה",
+                        type: "doc",
+                        icon: "fa-file-lines",
+                        color: "text-amber-600",
+                        bg: "bg-amber-50",
+                        content: `
+                            <div class="max-w-5xl mx-auto bg-white shadow-2xl rounded-3xl p-12 md:p-16 my-10 text-slate-900 border border-slate-200 text-lg md:text-xl leading-relaxed">
+                                <div class="border-b border-slate-200 pb-8 mb-10 flex justify-between items-start">
+                                    <div>
+                                        <h1 class="text-3xl md:text-4xl font-black text-slate-900">מבחן פתע - מתמטיקה</h1>
+                                        <p class="text-base text-slate-500 mt-2 font-medium">שם: אלין ורטמן | תאריך: 8.10.2026 | כיתה: י"ב | זמן: 35 דקות</p>
+                                    </div>
+                                    <span class="bg-blue-50 text-blue-700 text-base px-5 py-2 rounded-full font-bold border border-blue-200">Google Docs</span>
+                                </div>
+                                
+                                <div class="text-base md:text-lg font-bold text-slate-800 bg-slate-50 p-8 rounded-3xl border border-slate-200 mb-10">
+                                    <p class="font-black mb-3 text-xl">הוראות:</p>
+                                    <ul class="list-disc list-inside space-y-3 text-slate-700">
+                                        <li>ענו על כל השאלות.</li>
+                                        <li>הציגו דרך פתרון כאשר נדרש.</li>
+                                        <li>אין להשתמש בטלפון.</li>
+                                        <li>אין להיעזר בתלמידים אחרים.</li>
+                                        <li>אין להשתמש במחשבון.</li>
+                                        <li>יש להגיש את כל דפי המבחן בסיום.</li>
+                                        <li>שמרו את כל דפי המבחן עד להגשה.</li>
+                                    </ul>
+                                </div>
+
+                                <div class="space-y-8">
+                                    <div class="border-2 border-slate-200 rounded-3xl p-8 bg-white space-y-4 shadow-sm">
+                                        <p class="font-black text-indigo-700 text-xl">שאלה 1</p>
+                                        <p class="text-lg">חשבו:</p>
+                                        <p class="text-lg">א. <strong>933</strong> = 347 + 586</p>
+                                        <p class="text-lg">ב. <strong>727</strong> = 478 - 1205</p>
+                                        <p class="text-lg">ג. <strong>60</strong> = 24 + 36</p>
+                                        <p class="text-lg">ד. <strong>1608</strong> = 120 - 1728</p>
+                                    </div>
+
+                                    <div class="border-2 border-slate-200 rounded-3xl p-8 bg-white space-y-4 shadow-sm">
+                                        <p class="font-black text-indigo-700 text-xl">שאלה 2</p>
+                                        <p class="text-lg">פתרו:</p>
+                                        <p class="text-lg">א. <strong>42</strong> = 4 × 6 + 18</p>
+                                        <p class="text-lg">ב. <strong>7</strong> = 4 ÷ (17 - 45)</p>
+                                        <p class="text-lg">ג. <strong>45</strong> = 2 × 13 + 8 ÷ 72</p>
+                                        <p class="text-lg">ד. <strong>20</strong> = 2 × (16 + 24) - 100</p>
+                                    </div>
+
+                                    <div class="border-2 border-slate-200 rounded-3xl p-8 bg-white space-y-4 shadow-sm">
+                                        <p class="font-black text-indigo-700 text-xl">שאלה 3</p>
+                                        <p class="text-lg">מצאו את X.</p>
+                                        <p class="text-lg">א. 3x + 7 = 25<br>3x = 25 - 7<br><strong>x = 6</strong></p>
+                                        <p class="text-lg">ב. 5x - 12 = 38<br>5x = 38 + 12<br><strong>x = 10</strong></p>
+                                        <p class="text-lg">ג. 7x − 5 = 3x + 19<br>4x = 24<br><strong>x = 6</strong></p>
+                                    </div>
+
+                                    <div class="border-2 border-slate-200 rounded-3xl p-8 bg-white space-y-4 shadow-sm">
+                                        <p class="font-black text-indigo-700 text-xl">שאלה 4</p>
+                                        <p class="text-lg">נתונה הפונקציה:<br>f(x) = 2x + 5</p>
+                                        <p class="text-lg">א. חשבו את f(6).<br>f(3) = 2 × 3 + 5<br>f(3) = 6 + 5<br><strong>f(3) = 11</strong></p>
+                                        <p class="text-lg">ב. חשבו את f(-2).<br>f(−2) = 2 × (−2) + 5<br>f(−2) = −4 + 5<br><strong>f(−2) = 1</strong></p>
+                                        <p class="text-lg">ג. מצאו את ערך x שעבורו:<br>f(x) = 17<br>2x + 5 = 17<br>2x = 12<br><strong>x = 6</strong></p>
+                                        <p class="text-lg">ד. האם הנקודה (4,13) נמצאת על גרף הפונקציה? נמקו.<br>f(4) = 2 × 4 + 5 = <strong>13</strong><br>כן, הנקודה נמצאת על גרף הפונקציה.</p>
+                                    </div>
+
+                                    <div class="border-2 border-slate-200 rounded-3xl p-8 bg-white space-y-4 shadow-sm">
+                                        <p class="font-black text-indigo-700 text-xl">שאלה 5</p>
+                                        <p class="text-lg">מלבן בעל אורך של 12 ס"מ ורוחב של 7 ס"מ.</p>
+                                        <p class="text-lg">א. שטח המלבן:<br><strong>84 סמ"ר</strong></p>
+                                        <p class="text-lg">ב. היקף המלבן:<br><strong>38 ס"מ</strong></p>
+                                        <p class="text-lg">ג. אם מגדילים את האורך ב־3 ס"מ:<br>אורך חדש:<br><strong>10 ס"מ</strong><br>שטח חדש:<br><strong>105 סמ"ר</strong></p>
+                                        <p class="text-lg">ד. ההפרש בין השטחים:<br><strong>21 סמ"ר</strong></p>
+                                    </div>
+
+                                    <div class="border-2 border-slate-200 rounded-3xl p-8 bg-white space-y-5 shadow-sm">
+                                        <p class="font-black text-indigo-700 text-xl">שאלה 6 - חלק א'</p>
+                                        <p class="text-lg">פתרו:</p>
+                                        <p class="text-lg">א. <strong>4879</strong> = 3631 + 1248</p>
+                                        <p class="text-lg">ב. <strong>4469</strong> = 4846 - 9315</p>
+                                        <p class="text-lg">ג. <strong>4788</strong> = 84 × 57</p>
+                                        <p class="text-lg">ד. <strong>728</strong> = 12 ÷ 8736</p>
+                                        
+                                        <p class="text-lg font-bold mt-4">חלק ב':</p>
+                                        <div class="overflow-x-auto mt-2">
+                                            <table class="w-full text-right text-base md:text-lg border-collapse">
+                                                <tr class="bg-slate-100 text-slate-800 font-bold">
+                                                    <th class="p-4 border-2 border-slate-200">סעיף</th>
+                                                    <th class="p-4 border-2 border-slate-200">תוצאה</th>
+                                                    <th class="p-4 border-2 border-slate-200">מספר לקחת</th>
+                                                </tr>
+                                                <tr><td class="p-4 border-2 border-slate-200">א'</td><td class="p-4 border-2 border-slate-200">4,879</td><td class="p-4 border-2 border-slate-200 font-black text-indigo-600">1</td></tr>
+                                                <tr class="bg-slate-50"><td class="p-4 border-2 border-slate-200">ב'</td><td class="p-4 border-2 border-slate-200">4,469</td><td class="p-4 border-2 border-slate-200 font-black text-indigo-600">8</td></tr>
+                                                <tr><td class="p-4 border-2 border-slate-200">ג'</td><td class="p-4 border-2 border-slate-200">4,788</td><td class="p-4 border-2 border-slate-200 font-black text-indigo-600">3</td></tr>
+                                                <tr class="bg-slate-50"><td class="p-4 border-2 border-slate-200">ד'</td><td class="p-4 border-2 border-slate-200">728</td><td class="p-4 border-2 border-slate-200 font-black text-indigo-600">1</td></tr>
+                                            </table>
+                                        </div>
+                                        <p class="text-xl font-bold text-slate-800 mt-6 pt-4 border-t border-slate-200">כמה שינויים יש?</p>
+                                    </div>
+                                </div>
+                                <div class="mt-8 text-center text-slate-500 font-medium">בהצלחה מהמורה!</div>
+                            </div>
+                        `
+                    }
+                ]
+            },
+            3: {
+                name: "קובץ 3",
+                icon: "fa-folder",
+                color: "text-amber-500",
+                items: [
+                    {
+                        id: "f3_doc",
+                        name: "גיליון ציונים",
+                        type: "doc",
+                        icon: "fa-chart-bar",
+                        color: "text-amber-600",
+                        bg: "bg-amber-50",
+                        content: `
+                            <div class="max-w-5xl mx-auto bg-white shadow-2xl rounded-3xl p-12 md:p-16 my-10 text-slate-900 border border-slate-200 text-lg md:text-xl leading-relaxed">
+                                <div class="border-b border-slate-200 pb-8 mb-10 flex justify-between items-start">
+                                    <div>
+                                        <h1 class="text-3xl md:text-4xl font-black text-slate-900">קובץ הציונים של אלין ורטמן</h1>
+                                        <p class="text-base text-slate-500 mt-2 font-medium">שם התלמידה: אלין ורטמן | כיתה: י"א | שנת לימודים: 2026–2027 | תאריך עדכון: 08.10.2026</p>
+                                    </div>
+                                    <span class="bg-blue-50 text-blue-700 text-base px-5 py-2 rounded-full font-bold border border-blue-200">Google Docs</span>
+                                </div>
+                                
+                                <div class="overflow-x-auto mb-10">
+                                    <table class="w-full text-right text-base md:text-lg border-collapse">
+                                        <tr class="bg-slate-100 text-slate-800 font-bold">
+                                            <th class="p-5 border-2 border-slate-200">מקצוע</th>
+                                            <th class="p-5 border-2 border-slate-200">מבחן 1</th>
+                                            <th class="p-5 border-2 border-slate-200">מבחן 2</th>
+                                            <th class="p-5 border-2 border-slate-200">מבחן 3</th>
+                                            <th class="p-5 border-2 border-slate-200">ציון נוכחי</th>
+                                        </tr>
+                                        <tr>
+                                            <td class="p-5 border-2 border-slate-200 font-bold">מתמטיקה</td>
+                                            <td class="p-5 border-2 border-slate-200">92</td>
+                                            <td class="p-5 border-2 border-slate-200">87</td>
+                                            <td class="p-5 border-2 border-slate-200">94</td>
+                                            <td class="p-5 border-2 border-slate-200 font-black text-emerald-600">91</td>
+                                        </tr>
+                                        <tr class="bg-slate-50">
+                                            <td class="p-5 border-2 border-slate-200 font-bold">אנגלית</td>
+                                            <td class="p-5 border-2 border-slate-200">89</td>
+                                            <td class="p-5 border-2 border-slate-200">93</td>
+                                            <td class="p-5 border-2 border-slate-200">91</td>
+                                            <td class="p-5 border-2 border-slate-200 font-black text-emerald-600">91</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="p-5 border-2 border-slate-200 font-bold">פיזיקה</td>
+                                            <td class="p-5 border-2 border-slate-200">84</td>
+                                            <td class="p-5 border-2 border-slate-200">90</td>
+                                            <td class="p-5 border-2 border-slate-200">88</td>
+                                            <td class="p-5 border-2 border-slate-200 font-black text-amber-600">87</td>
+                                        </tr>
+                                        <tr class="bg-slate-50">
+                                            <td class="p-5 border-2 border-slate-200 font-bold">מדעי המחשב</td>
+                                            <td class="p-5 border-2 border-slate-200">96</td>
+                                            <td class="p-5 border-2 border-slate-200">91</td>
+                                            <td class="p-5 border-2 border-slate-200">95</td>
+                                            <td class="p-5 border-2 border-slate-200 font-black text-emerald-600">94</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="p-5 border-2 border-slate-200 font-bold">פסיכולוגיה</td>
+                                            <td class="p-5 border-2 border-slate-200">90</td>
+                                            <td class="p-5 border-2 border-slate-200">88</td>
+                                            <td class="p-5 border-2 border-slate-200">93</td>
+                                            <td class="p-5 border-2 border-slate-200 font-black text-emerald-600">90</td>
+                                        </tr>
+                                        <tr class="bg-slate-50">
+                                            <td class="p-5 border-2 border-slate-200 font-bold">פילוסופיה</td>
+                                            <td class="p-5 border-2 border-slate-200">86</td>
+                                            <td class="p-5 border-2 border-slate-200">92</td>
+                                            <td class="p-5 border-2 border-slate-200">89</td>
+                                            <td class="p-5 border-2 border-slate-200 font-black text-amber-600">89</td>
+                                        </tr>
+                                    </table>
+                                </div>
+
+                                <div class="bg-slate-50 border-2 border-slate-200 p-8 rounded-3xl text-lg space-y-3">
+                                    <p class="font-black text-slate-900">הערה:</p>
+                                    <p class="text-slate-700 italic">נא לוודא שהציונים נכונים על פי העותק של גיליון הציונים בשמרדף "אחר" בקלסר של המורה... אם היא חיה...</p>
+                                </div>
+                            </div>
+                        `
+                    }
+                ]
+            },
+            4: {
+                name: "קובץ 4",
+                icon: "fa-folder",
+                color: "text-amber-500",
+                items: [
+                    {
+                        id: "f4_doc",
+                        name: "דיווחי יום",
+                        type: "doc",
+                        icon: "fa-clipboard-user",
+                        color: "text-amber-600",
+                        bg: "bg-amber-50",
+                        content: `
+                            <div class="max-w-5xl mx-auto bg-white shadow-2xl rounded-3xl p-12 md:p-16 my-10 text-slate-900 border border-slate-200 text-lg md:text-xl leading-relaxed">
+                                <div class="border-b border-slate-200 pb-8 mb-10 flex justify-between items-start">
+                                    <div>
+                                        <h1 class="text-3xl md:text-4xl font-black text-slate-900">דיווחי יום 5.10 - 8.10</h1>
+                                        <p class="text-base text-slate-500 mt-2 font-medium">יומן מעקב כיתתי רשמי</p>
+                                    </div>
+                                    <span class="bg-blue-50 text-blue-700 text-base px-5 py-2 rounded-full font-bold border border-blue-200">Google Docs</span>
+                                </div>
+
+                                <div class="space-y-6">
+                                    <div class="p-8 bg-slate-50 rounded-3xl border-2 border-slate-200 space-y-3 shadow-sm">
+                                        <p class="font-black text-amber-800 text-xl">דיווח יום - 5.10.2026</p>
+                                        <p class="text-slate-700 leading-relaxed text-lg">המורה נכנסה לכיתה ב־7:42 וסידרה את המחברות שלה בשתי ערימות.<br>ב־7:50 היא בדקה שכל הכיסאות פונים ללוח.<br>ב־7:58 היא כתבה על הלוח את המילה "סדר".<br>ב־8:03 היא יצאה להביא קפה.<br>ב־8:07 היא חזרה ושאלה מי נגע בדברים שלה.</p>
+                                    </div>
+
+                                    <div class="p-8 bg-slate-50 rounded-3xl border-2 border-slate-200 space-y-3 shadow-sm">
+                                        <p class="font-black text-amber-800 text-xl">דיווח יום - 6.10.2026</p>
+                                        <p class="text-slate-700 leading-relaxed text-lg">ב־7:51 המורה סידרה את הכיסאות ב־שורות.<br>ב־7:56 היא פתחה את הקלסר שלה בעמוד האחרון.<br>ב־8:02 היא הסתכלה על השעון ואמרה: "מאוחר מדי."<br>ב־8:04 היא התחילה לבדוק את המחברות.<br>ב־8:09 היא שכחה איפה הניחה את העט שלה.</p>
+                                    </div>
+
+                                    <div class="p-8 bg-slate-50 rounded-3xl border-2 border-slate-200 space-y-3 shadow-sm">
+                                        <p class="font-black text-amber-800 text-xl">דיווח יום - 7.10.2026</p>
+                                        <p class="text-slate-700 leading-relaxed text-lg">המורה הגיעה ב־7:48 והניחה את התיק שלה מתחת לשולחן.<br>ב־7:55 היא סידרה את המחברות לפי גודל.<br>ב־8:01 היא פתחה את החלון.<br>ב־8:06 היא הסתכלה על הכיתה במשך כמה שניות בלי להגיד כלום.<br>ב־8:10 היא חזרה לשולחן שלה.</p>
+                                    </div>
+
+                                    <div class="p-8 bg-slate-50 rounded-3xl border-2 border-slate-200 space-y-3 shadow-sm">
+                                        <p class="font-black text-amber-800 text-xl">דיווח יום - 8.10.2026</p>
+                                        <p class="text-slate-700 leading-relaxed text-lg">
+                                            המורה סידרה הכל ב<strong>טורים</strong>, גם את הכיסאות<br>
+                                            בכיתה ב-7:55 וגם את המחברות שלה ב-8:00.<br>
+                                            "תסתכלי" המורה אמרה ב-8:05 ואז היא הסתכלה<br>
+                                            בקפה! (ב-8:06)...
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        `
+                    }
+                ]
+            }
+        };
+
+        const noteItem = {
+            id: "note_doc",
+            name: "הערה",
+            type: "doc",
+            icon: "fa-file-lines",
+            color: "text-blue-600",
+            bg: "bg-blue-50",
+            content: `
+                <div class="max-w-5xl mx-auto bg-white shadow-2xl rounded-3xl p-12 md:p-16 my-10 text-slate-900 border border-slate-200 text-lg md:text-xl leading-relaxed">
+                    <div class="border-b border-slate-200 pb-8 mb-10 flex justify-between items-start">
+                        <div>
+                            <h1 class="text-3xl md:text-4xl font-black text-slate-900">הערה</h1>
+                            <p class="text-base text-slate-500 mt-2 font-medium">מסמך עזר לחדר בריחה</p>
+                        </div>
+                        <span class="bg-blue-50 text-blue-700 text-base px-5 py-2 rounded-full font-bold border border-blue-200">Google Docs</span>
+                    </div>
+                    
+                    <div class="bg-slate-50 border-2 border-slate-200 p-10 rounded-3xl text-xl space-y-6">
+                        <p class="text-2xl"><strong>בקובץ 1:</strong> המספר של קובץ אחד הוא מספר הצורה "+".</p>
+                        <p class="text-2xl"><strong>בקובץ 2:</strong> מספר השינויים הוא המספר.</p>
+                    </div>
+                </div>
+            `
+        };
+
+        function renderView() {
+            const container = document.getElementById('mainContainer');
+
+            let headerHTML = `
+                <div class="w-full max-w-7xl mb-10 text-center">
+                    <div class="inline-block bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white px-8 py-5 rounded-3xl shadow-xl border border-slate-700/50">
+                        <h1 class="text-2xl md:text-3xl font-black tracking-wide flex items-center justify-center gap-3">
+                            <i class="fa-solid fa-graduation-cap text-amber-400"></i>
+                            מאגר הקבצים הבית ספרי של אלין ורטמן
+                            <i class="fa-solid fa-graduation-cap text-amber-400"></i>
+                        </h1>
+                    </div>
+                </div>
+            `;
+
+            if (currentFolder === null) {
+                let html = headerHTML + `<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8 w-full max-w-7xl pt-2">`;
+
+                for (let i = 1; i <= 4; i++) {
+                    const isLocked = (currentMode === 'tv' && i > 1);
+                    html += `
+                        <div class="flex flex-col gap-3">
+                            ${isLocked ? '<div class="bg-slate-900 text-white text-sm px-4 py-2 rounded-xl font-bold flex items-center justify-center gap-2 shadow-md w-full"><i class="fa-solid fa-lock text-amber-400"></i> קובץ נעול</div>' : '<div class="h-[38px]"></div>'}
+                            <div onclick="openFolder(${i})" class="group bg-white rounded-3xl p-8 border-2 border-slate-200 shadow-xl hover:shadow-2xl hover:border-amber-400 transition-all duration-300 cursor-pointer flex flex-col justify-between relative overflow-hidden h-64">
+                                <div class="flex items-center justify-between z-10">
+                                    <div class="w-20 h-20 rounded-2xl bg-amber-50 text-amber-500 flex items-center justify-center text-4xl shadow-inner group-hover:scale-110 transition-transform">
+                                        <i class="fa-solid fa-folder"></i>
+                                    </div>
+                                </div>
+                                <h4 class="font-black text-slate-900 text-2xl group-hover:text-amber-600 transition-colors z-10">קובץ ${i}</h4>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                const isNoteLocked = (currentMode === 'tv');
+                html += `
+                    <div class="flex flex-col gap-3">
+                        ${isNoteLocked ? '<div class="bg-slate-900 text-white text-sm px-4 py-2 rounded-xl font-bold flex items-center justify-center gap-2 shadow-md w-full"><i class="fa-solid fa-lock text-amber-400"></i> מסמך נעול</div>' : '<div class="h-[38px]"></div>'}
+                        <div onclick="openItem('note_doc')" class="group bg-white rounded-3xl p-8 border-2 border-slate-200 shadow-xl hover:shadow-2xl hover:border-blue-400 transition-all duration-300 cursor-pointer flex flex-col justify-between relative overflow-hidden h-64">
+                            <div class="flex items-center justify-between z-10">
+                                <div class="w-20 h-20 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center text-4xl shadow-inner group-hover:scale-110 transition-transform">
+                                    <i class="fa-solid fa-file-lines"></i>
+                                </div>
+                            </div>
+                            <h4 class="font-black text-slate-900 text-2xl group-hover:text-blue-600 transition-colors z-10">הערה</h4>
+                        </div>
+                    </div>
+                `;
+
+                html += `</div>`;
+                container.innerHTML = html;
+
+            } else {
+                const folder = folderContents[currentFolder];
+                let html = headerHTML + `
+                    <div class="w-full max-w-7xl mb-8 flex items-center justify-between">
+                        <button onclick="goHome()" class="text-lg bg-white hover:bg-slate-100 text-slate-800 px-8 py-4 rounded-2xl border-2 border-slate-300 shadow-md flex items-center gap-3 transition cursor-pointer font-bold">
+                            <i class="fa-solid fa-arrow-right text-xl"></i>
+                            חזרה לתיקייה ראשית
+                        </button>
+                        <h2 class="text-3xl font-black text-slate-900">קובץ ${currentFolder}</h2>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 w-full max-w-7xl">
+                `;
+
+                folder.items.forEach(item => {
+                    html += `
+                        <div onclick="openItem('${item.id}')" class="group bg-white rounded-3xl p-10 border-2 border-slate-200 shadow-xl hover:shadow-2xl hover:border-amber-400 transition-all duration-300 cursor-pointer flex flex-col justify-between relative overflow-hidden h-72">
+                            <div class="flex items-center justify-between">
+                                <div class="w-24 h-24 rounded-3xl ${item.bg} ${item.color} flex items-center justify-center text-5xl shadow-inner group-hover:scale-110 transition-transform">
+                                    <i class="fa-solid ${item.icon}"></i>
+                                </div>
+                            </div>
+                            <h4 class="font-black text-slate-900 text-3xl group-hover:text-amber-600 transition-colors">${item.name}</h4>
+                        </div>
+                    `;
+                });
+
+                html += `</div>`;
+                container.innerHTML = html;
+            }
+        }
+
+        function openFolder(folderId) {
+            if (currentMode === 'tv' && folderId > 1) {
+                showAlert("לא ניתן לפתוח תיקייה זו במצב טלוויזיה!");
+                return;
+            }
+            currentFolder = folderId;
+            renderView();
+        }
+
+        function goHome() {
+            currentFolder = null;
+            renderView();
+        }
+
+        function openItem(itemId) {
+            if (currentMode === 'tv' && (currentFolder === null || currentFolder > 1 || itemId === 'note_doc')) {
+                showAlert("לא ניתן לצפות במסמך זה במצב טלוויזיה!");
+                return;
+            }
+
+            let item = null;
+            if (itemId === 'note_doc') {
+                item = noteItem;
+            } else if (currentFolder !== null) {
+                item = folderContents[currentFolder].items.find(i => i.id === itemId);
+            }
+
+            if (!item) return;
+
+            document.getElementById('modalTitle').innerText = item.name;
+            document.getElementById('modalSubtitle').innerText = item.type === 'video' ? 'סרטון חקירה' : 'Google Docs';
+            document.getElementById('modalHeaderIcon').className = `fa-solid ${item.icon}`;
+            document.getElementById('modalIconBg').className = `w-12 h-12 rounded-2xl ${item.bg} ${item.color} flex items-center justify-center text-xl font-bold`;
+
+            const modalBody = document.getElementById('modalBody');
+            if (item.type === 'video') {
+                modalBody.innerHTML = `
+                    <div class="w-full h-full bg-slate-950 flex flex-col items-center justify-center p-6 select-none">
+                        <div class="max-w-5xl w-full bg-black rounded-3xl overflow-hidden shadow-2xl relative border border-slate-800 flex flex-col items-center justify-center aspect-video">
+                            <iframe class="w-full h-full" src="https://www.youtube-nocookie.com/embed/_eq0PSBtPBo?autoplay=1" referrerpolicy="strict-origin-when-cross-origin" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+                        </div>
+                    </div>
+                `;
+            } else {
+                modalBody.innerHTML = `
+                    <div class="flex-1 overflow-y-auto p-6 md:p-12 bg-slate-100">
+                        ${item.content}
+                    </div>
+                `;
+            }
+
+            const overlay = document.getElementById('modalOverlay');
+            const container = document.getElementById('modalContainer');
+            overlay.classList.remove('opacity-0', 'pointer-events-none');
+            container.classList.remove('scale-95');
+            container.classList.add('scale-100');
+        }
+
+        function closeModal() {
+            const overlay = document.getElementById('modalOverlay');
+            const container = document.getElementById('modalContainer');
+            overlay.classList.add('opacity-0', 'pointer-events-none');
+            container.classList.remove('scale-100');
+            container.classList.add('scale-95');
+            document.getElementById('modalBody').innerHTML = '';
+        }
+
+        window.onload = function() {
+            renderView();
+        };
+    </script>
+
+</body>
+</html>
